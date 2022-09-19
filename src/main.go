@@ -1,28 +1,39 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Rates struct {
-	EUR string `json:"EUR"`
-	USD string `json:"USD"`
+type RateStruct struct {
+	Rate string `json:"rate"`
 }
 
-type BitcoinRates struct {
-	Currbitcoin Rates `json:"bitcoin"`
+type BpiStruct struct {
+	Usd RateStruct `json:"USD"`
+	Eur RateStruct `json:"EUR"`
 }
 
-type EnclosingStruct struct {
-	Data BitcoinRates `json:"data"`
+type RequestParsingStruct struct {
+	Bpi BpiStruct `json:"bpi"`
 }
 
-var rates = Rates{EUR: "43,947.8947", USD: "49,822.2917"}
-var BRates = BitcoinRates{Currbitcoin: rates}
-var ESRates = EnclosingStruct{Data: BRates}
+type BitcoinRatesStruct struct {
+	Eur string `json:"EUR"`
+	Usd string `json:"USD"`
+}
+
+type DataStruct struct {
+	Bitcoin BitcoinRatesStruct `json:"bitcoin"`
+}
+
+type ResponseStruct struct {
+	Data DataStruct `json:"data"`
+}
 
 func main() {
 	router := gin.Default()
@@ -33,8 +44,35 @@ func main() {
 
 // getPrices responds with the EUR and USD prices as JSON.
 func getPrices(c *gin.Context) {
-	fmt.Println(ESRates)
-	c.IndentedJSON(http.StatusOK, ESRates)
+	// fmt.Println(RSRates)
+	curRates, err := getPricesFromCoinBaseAPI()
+	if err != nil {
+		log.Fatal("Couldn't get rates")
+	}
+	var BtcRates = BitcoinRatesStruct{Eur: curRates.Bpi.Eur.Rate, Usd: curRates.Bpi.Usd.Rate}
+	RSRates := ResponseStruct{Data: DataStruct{Bitcoin: BtcRates}}
+	c.IndentedJSON(http.StatusOK, RSRates)
+}
+
+func getPricesFromCoinBaseAPI() (RequestParsingStruct, error) {
+	var currentRates = RequestParsingStruct{}
+	requestURL := "https://api.coindesk.com/v1/bpi/currentprice.json"
+	response, err := http.Get(requestURL)
+	if err != nil {
+		log.Printf("client: could not get current rates: %s\n", err)
+		return currentRates, err
+	}
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("couldn't read the Response body")
+		return currentRates, err
+	}
+	// fmt.Println(responseData)
+	returnedJson := responseData
+
+	json.Unmarshal([]byte(returnedJson), &currentRates)
+	return currentRates, nil
+
 }
 
 // package main
