@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,15 +46,41 @@ func main() {
 	router.Run("localhost:9999")
 }
 
+var lastUpdatedTime time.Time
+var RSRates ResponseStruct
+
 // getPrices responds with the EUR and USD prices as JSON.
 func getPrices(c *gin.Context) {
 	// fmt.Println(RSRates)
-	curRates, err := getPricesFromCoinBaseAPI()
-	if err != nil {
-		log.Fatal("Couldn't get rates")
+	var validTime int
+	validTimeStr := os.Getenv("EXPIRY")
+	var err error
+
+	fmt.Println(validTimeStr)
+
+	if validTimeStr == "" {
+		validTime = 0
+	} else {
+		validTime, err = strconv.Atoi(validTimeStr)
+		if err != nil {
+			log.Fatal("Invalid Expiry time. Please set the env variable \"EXPIRY\" with seconds in integer")
+		}
 	}
-	var BtcRates = BitcoinRatesStruct{Eur: curRates.Bpi.Eur.Rate, Usd: curRates.Bpi.Usd.Rate}
-	RSRates := ResponseStruct{Data: DataStruct{Bitcoin: BtcRates}}
+	var currentTime = time.Now()
+	fmt.Println(lastUpdatedTime.Add(time.Second*time.Duration(validTime)), currentTime)
+	if lastUpdatedTime.IsZero() || currentTime.After(lastUpdatedTime.Add(time.Second*time.Duration(validTime))) {
+		fmt.Println(lastUpdatedTime.IsZero())
+
+		lastUpdatedTime = currentTime
+		var curRates RequestParsingStruct
+		curRates, err = getPricesFromCoinBaseAPI()
+		if err != nil {
+			log.Fatal("Couldn't get rates")
+		}
+		var BtcRates = BitcoinRatesStruct{Eur: curRates.Bpi.Eur.Rate, Usd: curRates.Bpi.Usd.Rate}
+		RSRates = ResponseStruct{Data: DataStruct{Bitcoin: BtcRates}}
+	}
+
 	c.IndentedJSON(http.StatusOK, RSRates)
 }
 
@@ -74,37 +104,3 @@ func getPricesFromCoinBaseAPI() (RequestParsingStruct, error) {
 	return currentRates, nil
 
 }
-
-// package main
-
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// )
-
-// func main() {
-// 	data1 := map[string]interface{}{
-// 		"data": map[string]interface{}{
-// 			"bitcoin": map[string]interface{}{
-// 				"EUR": "43,947.8947",
-// 				"USD": "49,822.2917",
-// 			},
-// 		},
-// 	}
-// 	// data := map[string]interface{}{
-// 	// 	"intValue":    1234,
-// 	// 	"boolValue":   true,
-// 	// 	"stringValue": "hello!",
-// 	// 	"objectValue": map[string]interface{}{
-// 	// 		"arrayValue": []int{1, 2, 3, 4},
-// 	// 	},
-// 	// }
-
-// 	jsonData, err := json.MarshalIndent(data1, "", "   ")
-// 	if err != nil {
-// 		fmt.Printf("could not marshal json: %s\n", err)
-// 		return
-// 	}
-
-// 	fmt.Printf("%s\n", jsonData)
-// }
