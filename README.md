@@ -1,25 +1,18 @@
 Solution to Golang Assignment - https://www.notion.so/playment/Golang-assignment-6e6df82a03024d9c92d44821b666001c
 
 ## Prerequisite
-
-Change to the `src` directory and execute once -
-```
-go mod init //One time step
-```
-
-## Execution
-To set the `EXPIRY_TIME` variable -
+Set the optional environment variables `EXPIRY_TIME` (unset default is 0 seconds) and `PRICE_TRACKER` (unset default 
+is `coindesk`).
 ```
 export EXPIRY_TIME=<Expiry time in seconds>
-```
-Optionally, also set the `PRICE_TRACKER` variable.
-This variable sets which API to call to get the exchange rates.
-For now, it can be set to `coindesk` (also the default if this variable is not set), 
-new values will be added with support for other APIs.
-```
 export PRICE_VARIABLE=coindesk
 ```
-Run the server -
+The `EXPIRY_TIME` variable determines how long the fetched exchange data is valid.
+The `PRICE_TRACKER` variable sets which online API to call to get the exchange rates.
+For now, it can be set to `coindesk`, new values will be added with support for other APIs.
+
+## Execution
+Change to the `src` directory and execute the server -
 ```
 go run .
 ``` 
