@@ -1,29 +1,21 @@
-package main
+package server
 
 import (
+	"github.com/agtelus/golang-assignment/src/clients"
+	"github.com/agtelus/golang-assignment/src/interfaces"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// Structs to construct the JSON API response
-type BitcoinRatesStruct struct {
-	Eur string `json:"EUR"`
-	Usd string `json:"USD"`
-}
-
-type DataStruct struct {
-	Bitcoin BitcoinRatesStruct `json:"bitcoin"`
-}
-
-type ResponseStruct struct {
-	Data DataStruct `json:"data"`
-}
-
 // global variables
+
+// ExpiryTime in seconds
+var ExpiryTime int
 
 // Stores the time of the last update of the values
 var lastUpdatedTime time.Time
@@ -31,17 +23,11 @@ var lastUpdatedTime time.Time
 // lastAPI used to track the prices
 var lastApiUsed string
 
-// RSRates stores the values seen
-var RSRates ResponseStruct
-
-type PriceTracker interface {
-	GetPriceFromTracker() (ResponseStruct, error)
-	GetName() string
-	GetURL() string
-}
+// RSRates stores the latest price values
+var RSRates interfaces.ResponseStruct
 
 // updateExchangeRates updates RSRates the global variable
-func updateExchangeRates(prices ResponseStruct, timeChannel chan time.Time) {
+func updateExchangeRates(prices interfaces.ResponseStruct, timeChannel chan time.Time) {
 	RSRates = prices          //update the structure with the got value
 	timeChannel <- time.Now() // return time of update
 }
@@ -57,8 +43,8 @@ func GetPrices(c *gin.Context) {
 	// if we don't have the exchange rates or have stale values -> get latest values
 	if lastUpdatedTime.IsZero() || lastApiUsed != PriceTrackerAPI || currentTime.After(currentValidity) {
 		// fmt.Println(lastUpdatedTime.IsZero())
-		var priceTrackerInterface PriceTracker
-		var curRates ResponseStruct
+		var priceTrackerInterface interfaces.PriceTracker
+		var curRates interfaces.ResponseStruct
 		var err error
 		timeChannel := make(chan time.Time) // channel for concurrency control
 
@@ -69,12 +55,12 @@ func GetPrices(c *gin.Context) {
 			fallthrough
 		case "coindesk": // In case PriceTrackerAPI isn't set in the environment
 			log.Println("Rates extracted from Coindesk API")
-			var cdApi = CoinDeskApi{}
+			var cdApi = clients.CoinDeskApi{}
 			priceTrackerInterface = cdApi
 		default:
 			var returnError = "Internal Server Error. Please report issue at https://github.com/agtelus/golang-assignment"
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"returncode": http.StatusServiceUnavailable, "error": returnError})
-			log.Panicf("PANIC!!! Environment variable 'PriceTrackerAPI' set to invalid value '%v'. Set it to one of {coindesk}!!!\n", PriceTrackerAPI)
+			log.Panicf("PANIC!!! Environment variable 'PRICE_TRACKER' set to invalid value '%v'. Set it to one of {coindesk}!!!\n", PriceTrackerAPI)
 
 		}
 
@@ -94,4 +80,18 @@ func GetPrices(c *gin.Context) {
 
 	c.IndentedJSON(http.StatusOK, RSRates) //return indented json response
 
+}
+
+func SetServerExpiryTime() {
+	var err error
+	expiryTimeStr := os.Getenv("EXPIRY_TIME")
+	if expiryTimeStr == "" { //ENV variable EXPIRY isn't set. Default to 0
+		ExpiryTime = 0
+	} else {
+		ExpiryTime, err = strconv.Atoi(expiryTimeStr)
+		if err != nil {
+			log.Fatal("Invalid Expiry time. Please set the env variable \"EXPIRY\" with seconds in integer")
+		}
+	}
+	log.Printf("Expiry time set to %d seconds\n", ExpiryTime)
 }

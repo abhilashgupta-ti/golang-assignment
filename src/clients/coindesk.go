@@ -1,7 +1,8 @@
-package main
+package clients
 
 import (
 	"encoding/json"
+	"github.com/agtelus/golang-assignment/src/interfaces"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -33,8 +34,8 @@ func (cdApi CoinDeskApi) GetURL() string {
 }
 
 // Get prices from CoinDesk API
-func (cdApi CoinDeskApi) GetPriceFromTracker() (ResponseStruct, error) {
-	var updatedRates = ResponseStruct{}
+func (cdApi CoinDeskApi) GetPriceFromTracker() (interfaces.ResponseStruct, error) {
+	var updatedRates = interfaces.ResponseStruct{}
 	var parsedRates = RequestParsingStruct{}
 	requestURL := cdApi.GetURL()
 	response, err := http.Get(requestURL)
@@ -49,7 +50,7 @@ func (cdApi CoinDeskApi) GetPriceFromTracker() (ResponseStruct, error) {
 	}
 	// Unmarshall the relevant part of the json into our structure
 	json.Unmarshal([]byte(responseJsonData), &parsedRates)
-	var BtcRates = BitcoinRatesStruct{parsedRates.Bpi.Eur.Rate, parsedRates.Bpi.Usd.Rate}
-	updatedRates = ResponseStruct{Data: DataStruct{Bitcoin: BtcRates}}
+	var BtcRates = interfaces.BitcoinRatesStruct{parsedRates.Bpi.Eur.Rate, parsedRates.Bpi.Usd.Rate}
+	updatedRates = interfaces.ResponseStruct{Data: interfaces.DataStruct{Bitcoin: BtcRates}}
 	return updatedRates, nil
 }
