@@ -8,9 +8,16 @@ go mod init //One time step
 ```
 
 ## Execution
-To set the `EXPIRY` variable -
+To set the `EXPIRY_TIME` variable -
 ```
-export EXPIRY=<Expiry time in seconds>
+export EXPIRY_TIME=<Expiry time in seconds>
+```
+Optionally, also set the `PRICE_TRACKER` variable.
+This variable sets which API to call to get the exchange rates.
+For now, it can be set to `coindesk` (also the default if this variable is not set), 
+new values will be added with support for other APIs.
+```
+export PRICE_VARIABLE=coindesk
 ```
 Run the server -
 ```
