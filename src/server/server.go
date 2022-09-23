@@ -17,6 +17,9 @@ import (
 // ExpiryTime in seconds
 var ExpiryTime int
 
+// Environment variable to set the API from which we gather our exchange rates
+var PriceTrackerAPI string
+
 // Stores the time of the last update of the values
 var lastUpdatedTime time.Time
 
@@ -25,6 +28,8 @@ var lastApiUsed string
 
 // RSRates stores the latest price values
 var RSRates interfaces.ResponseStruct
+
+var coinDeskApi = clients.CoinDeskApi{}
 
 // updateExchangeRates updates RSRates the global variable
 func updateExchangeRates(prices interfaces.ResponseStruct, timeChannel chan time.Time) {
@@ -37,26 +42,22 @@ func GetPrices(c *gin.Context) {
 	log.Printf("/prices requested by %v\n", c.ClientIP())
 	var currentTime = time.Now()
 	var currentValidity = lastUpdatedTime.Add(time.Second * time.Duration(ExpiryTime))
-	// fmt.Println(currentValidity, currentTime)
 
-	var PriceTrackerAPI = os.Getenv("PRICE_TRACKER")
-	// if we don't have the exchange rates or have stale values -> get latest values
-	if lastUpdatedTime.IsZero() || lastApiUsed != PriceTrackerAPI || currentTime.After(currentValidity) {
-		// fmt.Println(lastUpdatedTime.IsZero())
+	var fetchFreshData = lastUpdatedTime.IsZero() || lastApiUsed != PriceTrackerAPI || currentTime.After(currentValidity)
+	if fetchFreshData {
 		var priceTrackerInterface interfaces.PriceTracker
 		var curRates interfaces.ResponseStruct
 		var err error
 		timeChannel := make(chan time.Time) // channel for concurrency control
 
-		switch strings.ToLower(PriceTrackerAPI) {
+		switch PriceTrackerAPI {
 		case "":
 			log.Println("Tracker API not set! Defaulting to coindesk for now!")
 			log.Println("You can set which API to extract rates from by setting the PRICE_TRACKER environment variable.")
 			fallthrough
 		case "coindesk": // In case PriceTrackerAPI isn't set in the environment
 			log.Println("Rates extracted from Coindesk API")
-			var cdApi = clients.CoinDeskApi{}
-			priceTrackerInterface = cdApi
+			priceTrackerInterface = coinDeskApi
 		default:
 			var returnError = "Internal Server Error. Please report issue at https://github.com/agtelus/golang-assignment"
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"returncode": http.StatusServiceUnavailable, "error": returnError})
@@ -94,4 +95,8 @@ func SetServerExpiryTime() {
 		}
 	}
 	log.Printf("Expiry time set to %d seconds\n", ExpiryTime)
+}
+
+func SetPriceTrackerAPI() {
+	PriceTrackerAPI = strings.ToLower(os.Getenv("PRICE_TRACKER"))
 }

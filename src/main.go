@@ -18,8 +18,9 @@ func setupRouter() *gin.Engine {
 
 // main()
 func main() {
-	// Figure out expiry Time and set it
+	// Set local variables based on environment values
 	server.SetServerExpiryTime()
+	server.SetPriceTrackerAPI()
 
 	//Initialise the gin router
 	router := setupRouter()
