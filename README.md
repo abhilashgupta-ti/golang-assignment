@@ -7,7 +7,7 @@ is `coindesk`).
 export EXPIRY_TIME=<Expiry time in seconds>
 export PRICE_VARIABLE=coindesk
 ```
-The `EXPIRY_TIME` variable determines how long the fetched exchange data is valid.
+The `EXPIRY_TIME` variable  determines how long the fetched exchange data is valid.
 The `PRICE_TRACKER` variable sets which online API to call to get the exchange rates.
 For now, it can be set to `coindesk`, new values will be added with support for other APIs.
 
